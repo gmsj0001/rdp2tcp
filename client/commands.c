@@ -23,8 +23,6 @@
 #include "r2tcli.h"
 #include "msgparser.h"
 
-#include <arpa/inet.h>
-
 extern const char *r2t_errors[R2TERR_MAX];
 
 static int badproto(netsock_t *cli)

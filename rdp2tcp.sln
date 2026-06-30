@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37411.7
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "server", "server\server.vcxproj", "{2DFADA4B-B5CA-42BC-B0B0-9B7512B4CE0E}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "client", "client\client.vcxproj", "{7FF74541-7198-48EF-AAC3-DD0987C8639B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2DFADA4B-B5CA-42BC-B0B0-9B7512B4CE0E}.Debug|x64.ActiveCfg = Debug|x64
+		{2DFADA4B-B5CA-42BC-B0B0-9B7512B4CE0E}.Debug|x64.Build.0 = Debug|x64
+		{2DFADA4B-B5CA-42BC-B0B0-9B7512B4CE0E}.Release|x64.ActiveCfg = Release|x64
+		{2DFADA4B-B5CA-42BC-B0B0-9B7512B4CE0E}.Release|x64.Build.0 = Release|x64
+		{7FF74541-7198-48EF-AAC3-DD0987C8639B}.Debug|x64.ActiveCfg = Debug|x64
+		{7FF74541-7198-48EF-AAC3-DD0987C8639B}.Debug|x64.Build.0 = Debug|x64
+		{7FF74541-7198-48EF-AAC3-DD0987C8639B}.Release|x64.ActiveCfg = Release|x64
+		{7FF74541-7198-48EF-AAC3-DD0987C8639B}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2F297A1D-1E24-4080-981F-5B7D1D8CC60F}
+	EndGlobalSection
+EndGlobal

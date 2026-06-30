@@ -37,7 +37,6 @@
 #define nethelper_error errno
 #define nethelper_badsock -1
 #define close_sock(x) close(x)
-#define net_fd(s) (*(s))
 
 #else
 #define nethelper_error WSAGetLastError()
@@ -46,7 +45,6 @@
 #ifndef ENOMEM
 #define ENOMEM ERROR_NOT_ENOUGH_MEMORY
 #endif
-#define net_fd(s) ((s)->fd)
 
 /**
  * initialize network subsystem

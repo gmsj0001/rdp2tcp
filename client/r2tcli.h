@@ -26,9 +26,6 @@
 #include "rdp2tcp.h"
 #include "nethelper.h"
 
-#include <sys/types.h>
-#include <sys/socket.h>
-
 // netsock.c
 #define NETSOCK_CTRLSRV 0
 #define NETSOCK_TUNSRV  1
@@ -50,7 +47,7 @@
 /** network socket (tunnel, client or server) */
 typedef struct _netsock {
 	struct list_head list;     /**< double-linked list */
-	int fd;                    /**< socket descriptor */
+	sock_t sock;                    /**< socket descriptor */
 	unsigned char type;        /**< socket type */
 	unsigned char state;       /**< tunnel state */
 	unsigned char tid;         /**< tunnel identifier */
@@ -87,7 +84,7 @@ typedef struct _netsock {
 
 #define valid_netsock(ns) \
 				((ns) && (ns)->list.next && (ns)->list.prev \
-				 && (((ns)->fd != -1) || ((ns)->type == NETSOCK_RTUNSRV)) \
+				 && ((valid_sock(&(ns)->sock)) || ((ns)->type == NETSOCK_RTUNSRV)) \
 				 && ((ns)->type <= NETSOCK_RTUNCLI) \
 				 && (((ns)->addr.ip4.sin_family == AF_INET) \
 					 || ((ns)->addr.ip4.sin_family == AF_INET6) \
@@ -101,7 +98,7 @@ typedef struct _netsock {
  */
 #define netsock_want_read(ns) ((ns)->state >= NETSTATE_CONNECTED)
 
-netsock_t *netsock_alloc(netsock_t *, int, netaddr_t *, unsigned int);
+netsock_t *netsock_alloc(netsock_t *, sock_t *, netaddr_t *, unsigned int);
 netsock_t *netsock_bind(netsock_t *, const char*,unsigned short,unsigned int);
 netsock_t *netsock_accept(netsock_t *);
 netsock_t *netsock_connect(const char *, unsigned short);
@@ -118,9 +115,9 @@ void netsock_close(netsock_t *);
 int  channel_init(void);
 void channel_kill(void);
 int  channel_is_connected(void);
-int  channel_read_event(void);
+int  channel_read_event(void*, unsigned int);
 int  channel_want_write(void);
-void channel_write_event(void);
+void channel_write_event(void(*)(void*, unsigned int));
 int  channel_ping(void);
 void channel_pong(void);
 unsigned char channel_request_tunnel(unsigned char, const char *, unsigned short, int);

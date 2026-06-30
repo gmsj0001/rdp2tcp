@@ -153,7 +153,8 @@ int tunnel_add_reverse(
 
 	lhost_len = strlen(lhost) + 1;
 	rhost_len = strlen(rhost) + 1;
-	ns = netsock_alloc(cli, -1, NULL, lhost_len + rhost_len);
+	sock_t sock = { -1 };
+	ns = netsock_alloc(cli, &sock, NULL, lhost_len + rhost_len);
 	if (!ns)
 		return 0; // soft-error .. maybe hard but dont kill client
 

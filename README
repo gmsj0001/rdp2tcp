@@ -108,6 +108,16 @@ connecting to the controller and sending commands. This is similar as when
 using rdesktop. rdp2tcp.py (located in "tools" folder) can also be used to
 manage tunnels.
 
+- [ client (mstsc side) ]--------------------
+
+In Windows, rdp2tcp client compile as a DLL. It can be used with the 
+mstsc.exe client by registering a plugin "rdp2tcp" in the registry:
+    
+    HKEY_CURRENT_USER\Software\Microsoft\Terminal Server Client\Default\AddIns\rdp2tcp
+    Name=<path to rdp2tcp.dll>
+
+After connection established, use the rdp2tcp.py script to manage tunnels. 
+This is similar as when using rdesktop or FreeRDP.
 
 -[ server (Terminal Server side) ]-------------
 

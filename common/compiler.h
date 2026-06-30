@@ -34,7 +34,6 @@
 #endif
 #define ssize_t int
 #define inline __inline
-#define snprintf _snprintf
 #define typeof(x) void *
 #endif
 

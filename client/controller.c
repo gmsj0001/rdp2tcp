@@ -26,7 +26,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
-#include <arpa/inet.h>
 
 #ifndef PTR_DIFF
 #define PTR_DIFF(e,s) \

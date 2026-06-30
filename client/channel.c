@@ -26,8 +26,6 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-#include <unistd.h>
-#include <arpa/inet.h>
 
 extern int debug_level;
 
@@ -91,7 +89,7 @@ int channel_is_connected(void)
  * handle virtual channel read-event
  * @return 0 on success
  */
-int channel_read_event(void)
+int channel_read_event(void* buf, unsigned int size)
 {
 	ssize_t r;
 	char *ptr;
@@ -99,6 +97,7 @@ int channel_read_event(void)
 	
 	//trace_chan("");
 
+#ifndef _WIN32
 	ptr = (char *)&msglen;
 	avail = 4;
 	do {
@@ -113,7 +112,7 @@ int channel_read_event(void)
 	if (!ptr)
 		return error("failed to reserve channel memory");
 
-  avail = msglen;
+	avail = msglen;
 	do {
 		r = read(RDP_FD_IN, ptr, avail);
 		//trace_chan("r=%u/%u", r, avail);
@@ -133,6 +132,11 @@ int channel_read_event(void)
 		ptr += r;
 		avail -= r;
 	} while (avail > 0);
+#else
+	msglen = size;
+	ptr = iobuf_reserve(&vc.ibuf, msglen, &avail);
+	memcpy(ptr, buf, msglen);
+#endif
 
 	iobuf_commit(&vc.ibuf, msglen);
 	commands_parse(&vc.ibuf);
@@ -162,7 +166,7 @@ int channel_want_write(void)
  * handle virtual channel write-event
  * @return 0 on success
  */
-void channel_write_event(void)
+void channel_write_event(void(*write)(void*, unsigned int))
 {
 	int ret, fd;
 	unsigned int w;
@@ -172,6 +176,7 @@ void channel_write_event(void)
 	if (debug_level > 2) iobuf_dump(&vc.obuf);
 #endif
 
+#ifndef _WIN32
 	fd = RDP_FD_OUT;
 	ret = net_write(&fd, &vc.obuf, NULL, 0, &w);
 	if (ret >= 0) {
@@ -185,6 +190,10 @@ void channel_write_event(void)
 			error("failed to write to rdesktop pipe (%s)", strerror(errno));
 		bye();
 	}
+#else
+	write(iobuf_dataptr(&vc.obuf), iobuf_datalen(&vc.obuf));
+	iobuf_consume(&vc.obuf, iobuf_datalen(&vc.obuf));
+#endif
 }
 
 /**
@@ -345,7 +354,7 @@ int channel_forward_recv(netsock_t *ns)
 	off = iobuf_datalen(&vc.obuf);
 	ret = netsock_read(ns, &vc.obuf, 6, &r);
 	if (!ret) {
-		msg = iobuf_dataptr(&vc.obuf) + off;
+		msg = (unsigned char*)iobuf_dataptr(&vc.obuf) + off;
 		*(unsigned int*)msg = htonl(r + 2);
 		msg[4] = R2TCMD_DATA;
 		msg[5] = ns->tid;

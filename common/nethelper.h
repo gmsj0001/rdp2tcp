@@ -38,13 +38,14 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
+#include <arpa/inet.h>
 typedef int sock_t;
 #define net_init()   ((void)0)
 #define net_exit()   ((void)0)
-#define net_close(x) close(x)
+#define net_close(s) close(*(s))
 #define net_pending() ((errno == EINPROGRESS) || (errno == EAGAIN))
 #define valid_sock(s) ((s) && (*(s) != -1))
+#define net_fd(s) (*(s))
 
 #else
 #include <winsock2.h>
@@ -61,6 +62,7 @@ void net_close(sock_t *);
 #define net_pending() (WSAGetLastError() == WSAEWOULDBLOCK)
 #define valid_sock(s) ((s) && ((s)->fd != INVALID_SOCKET) \
 								&& ((s)->evt != WSA_INVALID_EVENT))
+#define net_fd(s) ((s)->fd)
 
 int net_update_watch(sock_t *, iobuf_t *);
 #endif

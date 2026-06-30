@@ -35,10 +35,6 @@
 #include <string.h>
 #include <signal.h>
 #include <errno.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 /**
  * default rdp2tcp controller TCP port
@@ -59,12 +55,14 @@ void bye(void)
 	exit(0);
 }
 
+#ifndef _WIN32
 static void handle_cleanup(int sig)
 {
 	if (sig == SIGPIPE)
 		info(0, "rdesktop pipe is broken");
 	bye();
 }
+#endif
 
 static void setup(int argc, char **argv)
 {
@@ -72,6 +70,7 @@ static void setup(int argc, char **argv)
 	int port;
 
 	print_init();
+	net_init();
 
 	if (argc > 3)
 		exit(0);
@@ -106,17 +105,22 @@ int main(int argc, char **argv)
 
 	setup(argc, argv);
 
+#ifndef _WIN32
 	signal(SIGUSR1, handle_cleanup);
 	signal(SIGINT, handle_cleanup);
 	signal(SIGPIPE, handle_cleanup);
+#endif
 
 	last_state = 0;
 
 	while (!killme) {
 
 		FD_ZERO(&rfd);
+		max_fd = 0;
+#ifndef _WIN32
 		FD_SET(RDP_FD_IN, &rfd);
 		max_fd = RDP_FD_IN;
+#endif
 
 		FD_ZERO(&wfd);
 		pwfd = NULL;
@@ -132,6 +136,7 @@ int main(int argc, char **argv)
 			last_state = state;
 		}
 
+#ifndef _WIN32
 		if (state) {
 			// channel is connected
 			if (channel_want_write()) {
@@ -143,13 +148,22 @@ int main(int argc, char **argv)
 			tv.tv_usec = 0;
 			ptv = &tv;
 		}
+#else
+		if (channel_want_write()) {
+			static void channel_write(void*, unsigned int);
+			channel_write_event(channel_write);
+		}
+		tv.tv_sec = 0;
+		tv.tv_usec = 10 * 1000;
+		ptv = &tv;
+#endif
 
 		list_for_each(ns, &all_sockets) {
 
 			assert(valid_netsock(ns));
 
 			if (ns->state != NETSTATE_CANCELLED) {
-				fd = ns->fd;
+				fd = net_fd(&ns->sock);
 
 				if (netsock_want_read(ns)) {
 					FD_SET(fd, &rfd);
@@ -177,14 +191,16 @@ int main(int argc, char **argv)
 			//info(0, "channel timeout");
 			continue;
 		}
-
+		
+#ifndef _WIN32
 		if (FD_ISSET(RDP_FD_OUT, &wfd))
-			channel_write_event();
+			channel_write_event(0);
 
 		if (FD_ISSET(RDP_FD_IN, &rfd)) {
-			if (channel_read_event() < 0)
+			if (channel_read_event(0, 0) < 0)
 				break;
 		}
+#endif
 
 		list_for_each_safe(ns, bak, &all_sockets) {
 
@@ -199,7 +215,7 @@ int main(int argc, char **argv)
 			if (ns->type == NETSOCK_RTUNSRV)
 				continue;
 
-			fd = ns->fd;
+			fd = net_fd(&ns->sock);
 			if (netsock_is_server(ns)) {
 				// server socket
 				if (FD_ISSET(fd, &rfd)) {
@@ -238,3 +254,69 @@ int main(int argc, char **argv)
 	return 0;
 }
 
+
+#ifdef _WIN32
+
+#include <cchannel.h>
+#include <process.h>
+
+static CHANNEL_ENTRY_POINTS channelEntryPoints;
+static DWORD channelOpenHandle;
+
+static void channel_write(void* buf, unsigned int size)
+{
+	void* copy = malloc(size);
+	memcpy(copy, buf, size);
+	if (channelEntryPoints.pVirtualChannelWrite(channelOpenHandle, copy, size, copy) != CHANNEL_RC_OK)
+		free(copy);
+}
+
+static void VCAPITYPE VirtualChannelOpenEvent(DWORD openHandle, UINT event, LPVOID pData, UINT32 dataLength, UINT32 totalLength, UINT32 dataFlags)
+{
+	switch (event) {
+	case CHANNEL_EVENT_DATA_RECEIVED:
+		channel_read_event(pData, dataLength);
+		break;
+	case CHANNEL_EVENT_WRITE_CANCELLED:
+	case CHANNEL_EVENT_WRITE_COMPLETE:
+		free(pData);
+		break;
+	}
+}
+
+static void VCAPITYPE VirtualChannelInitEvent(LPVOID pInitHandle, UINT event, LPVOID pData, UINT dataLength)
+{
+	switch (event) {
+	case CHANNEL_EVENT_INITIALIZED:
+		_beginthread(main, 0, 0);
+		break;
+	case CHANNEL_EVENT_CONNECTED:
+		if (channelEntryPoints.pVirtualChannelOpen(pInitHandle, &channelOpenHandle, RDP2TCP_CHAN_NAME, VirtualChannelOpenEvent) != CHANNEL_RC_OK)
+			return;
+		break;
+	case CHANNEL_EVENT_DISCONNECTED:
+		channelEntryPoints.pVirtualChannelClose(channelOpenHandle);
+		break;
+	case CHANNEL_EVENT_TERMINATED:
+		killme = 1;
+		break;
+	}
+}
+
+__declspec(dllexport) BOOL VCAPITYPE VirtualChannelEntry(PCHANNEL_ENTRY_POINTS pEntryPoints)
+{
+#ifdef DEBUG
+	AllocConsole();
+	freopen("CONOUT$", "w+t", stderr);
+#endif
+	channelEntryPoints = *pEntryPoints;
+	CHANNEL_DEF channelDef = { 0 };
+	strncpy(channelDef.name, RDP2TCP_CHAN_NAME, sizeof(channelDef.name));
+	channelDef.options = CHANNEL_OPTION_INITIALIZED | CHANNEL_OPTION_ENCRYPT_RDP | CHANNEL_OPTION_COMPRESS_RDP;
+	LPVOID initHandle;
+	if (pEntryPoints->pVirtualChannelInit(&initHandle, &channelDef, 1, VIRTUAL_CHANNEL_VERSION_WIN2000, VirtualChannelInitEvent) != CHANNEL_RC_OK)
+		return FALSE;
+	return TRUE;
+}
+
+#endif
